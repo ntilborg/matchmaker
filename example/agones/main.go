@@ -116,6 +116,7 @@ func handleMatchStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
+	//TODO add JSON ports
 	_, wrErr := io.WriteString(w, fmt.Sprintf("Full? %t", pool.IsFull))
 	if wrErr != nil {
 		fmt.Println("Error match status")
