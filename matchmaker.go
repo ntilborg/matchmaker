@@ -14,7 +14,7 @@ type MatchMaker struct {
 	WaitTime     time.Duration
 	mutex        sync.Mutex
 	pools        []*pool
-	expiredPools map[string]struct{}
+	expiredPools map[uint32]*PoolResp
 }
 
 // Option struct define engine option configuration
@@ -28,11 +28,11 @@ func New(opt Option) *MatchMaker {
 	return &MatchMaker{
 		maxPlayers:   opt.MaxPlayers,
 		WaitTime:     opt.WaitTime,
-		expiredPools: make(map[string]struct{}),
+		expiredPools: make(map[uint32]*PoolResp),
 	}
 }
 
-func (m *MatchMaker) getAvailablePool(playerID int32) *pool {
+func (m *MatchMaker) getAvailablePool(playerID uint32) *pool {
 
 	// TODO: improve find pools
 	// currently we just loop through pools on engine
@@ -54,7 +54,7 @@ func (m *MatchMaker) getAvailablePool(playerID int32) *pool {
 
 func (m *MatchMaker) createPool() *pool {
 	//Create the pool unique ID as string (due to int32)
-	poolID := fmt.Sprintf("%d", uuid.New().ID())
+	poolID := uuid.New().ID()
 	p := newPool(poolID, m.maxPlayers)
 
 	m.mutex.Lock()
@@ -72,8 +72,20 @@ func (m *MatchMaker) GetNumberOfPools() int {
 	return len(m.pools)
 }
 
+// GetPool return number of pools
+func (m *MatchMaker) GetPool(poolID uint32) *PoolResp {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	if _, ok := m.expiredPools[poolID]; !ok {
+		//Does not exist
+		fmt.Println("Warning, pool", poolID, "does not exist!")
+		return nil
+	}
+	return m.expiredPools[poolID]
+}
+
 //Join an active or new pool
-func (m *MatchMaker) Join(playerID int32) *PoolResp {
+func (m *MatchMaker) Join(playerID uint32) *PoolResp {
 	var (
 		p     = m.getAvailablePool(playerID)
 		timer = time.NewTimer(m.WaitTime)
@@ -99,7 +111,8 @@ func (m *MatchMaker) Join(playerID int32) *PoolResp {
 					TimeIsUp: true,
 					Players:  p.players,
 				}
-				m.expiredPools[p.id] = struct{}{}
+
+				m.expiredPools[p.id] = &p.respChan
 			}
 
 			if p.currentPlayerCount == len(p.players) {

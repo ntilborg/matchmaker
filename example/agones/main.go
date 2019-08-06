@@ -86,9 +86,9 @@ func handleJoinMatch(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	//Join the matchmaker with the unique client ID
-	pool := m.Join(int32(id))
+	pool := m.Join(uint32(id))
 
-	_, wrErr := io.WriteString(w, pool.PoolID)
+	_, wrErr := io.WriteString(w, fmt.Sprintf("%d", pool.PoolID))
 	if wrErr != nil {
 
 		fmt.Println("Error joining match")
@@ -99,9 +99,25 @@ func handleJoinMatch(w http.ResponseWriter, r *http.Request) {
 // Join with certain uid
 func handleMatchStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, err := io.WriteString(w, "TODO")
+
+	id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
 	if err != nil {
+		w.WriteHeader(http.StatusNotAcceptable)
+		fmt.Println("Error getting match info")
+		return
+	}
+
+	pool := m.GetPool(uint32(id))
+
+	if pool == nil {
+		w.WriteHeader(http.StatusNotAcceptable)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	_, wrErr := io.WriteString(w, fmt.Sprintf("Full? %t", pool.IsFull))
+	if wrErr != nil {
 		fmt.Println("Error match status")
 	}
 }

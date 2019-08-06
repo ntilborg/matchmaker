@@ -7,11 +7,11 @@ import (
 
 type (
 	pool struct {
-		id         string
+		id         uint32
 		maxPlayers int
 
 		m       sync.Mutex
-		players []int32
+		players []uint32
 
 		currentPlayerCount int
 
@@ -20,15 +20,15 @@ type (
 
 	// PoolResp is the response for joining the pool
 	PoolResp struct {
-		PoolID   string
+		PoolID   uint32
 		IsFull   bool
 		TimeIsUp bool
-		Players  []int32
+		Players  []uint32
 	}
 )
 
 // NewPool func create new pool
-func newPool(id string, maxItem int) *pool {
+func newPool(id uint32, maxItem int) *pool {
 	return &pool{
 		id:         id,
 		maxPlayers: maxItem,
@@ -36,10 +36,7 @@ func newPool(id string, maxItem int) *pool {
 }
 
 //Able to join? And new player is duplicate?
-func (p *pool) ableToJoin(playerID int32) (bool, bool) {
-
-	//TODO deadlock ?
-
+func (p *pool) ableToJoin(playerID uint32) (bool, bool) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
@@ -54,7 +51,7 @@ func (p *pool) ableToJoin(playerID int32) (bool, bool) {
 	return len(p.players) < p.maxPlayers, false
 }
 
-func (p *pool) add(player int32) *PoolResp {
+func (p *pool) add(player uint32) *PoolResp {
 
 	p.m.Lock()
 
