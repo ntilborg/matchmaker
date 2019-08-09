@@ -105,6 +105,7 @@ func (m *MatchMaker) Join(playerID uint32) *PoolResp {
 			m.mutex.Lock()
 
 			if _, ok := m.expiredPools[p.id]; !ok {
+				fmt.Println("Not assigned!")
 
 				p.respChan = PoolResp{
 					PoolID:   p.id,

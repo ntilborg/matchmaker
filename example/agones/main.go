@@ -28,18 +28,21 @@ const (
 
 var (
 	m *matchmaker.MatchMaker
+	s *matchmaker.ServerFinder
 )
 
 func main() {
 	fmt.Println("Starting matchmaker example")
 	conf := readConfig("config.json")
 
-	fmt.Println("Host:", conf.Host)
-	fmt.Println("Port:", conf.Port)
-
 	m = matchmaker.New(matchmaker.Option{
 		MaxPlayers: conf.MaxPlayers,
 		WaitTime:   time.Duration(conf.WaitTime) * time.Second,
+	})
+
+	s = matchmaker.NewFinder(matchmaker.AgonesOption{
+		Port: conf.Port,
+		Host: conf.Host,
 	})
 
 	//Handler to register a new player. Returns unique player ID
@@ -94,6 +97,11 @@ func handleJoinMatch(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Error joining match")
 		return
 	}
+
+	if pool.IsFull {
+		gs := s.GetServer(pool.PoolID)
+		println("Found", gs.Host, "port", gs.Port)
+	}
 }
 
 // Join with certain uid
@@ -116,7 +124,11 @@ func handleMatchStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
-	//TODO add JSON ports
+	if pool.IsFull {
+		gs := s.GetServer(pool.PoolID)
+		println("Found", gs.Host, "port", gs.Port)
+	}
+
 	_, wrErr := io.WriteString(w, fmt.Sprintf("Full? %t", pool.IsFull))
 	if wrErr != nil {
 		fmt.Println("Error match status")

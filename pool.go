@@ -54,8 +54,8 @@ func (p *pool) ableToJoin(playerID uint32) (bool, bool) {
 func (p *pool) add(player uint32) *PoolResp {
 
 	p.m.Lock()
-
 	p.players = append(p.players, player)
+
 	if len(p.players) == p.maxPlayers {
 		p.respChan = PoolResp{
 			PoolID:  p.id,

@@ -7,3 +7,6 @@ http://localhost:8001/register
 //Join a match as a player
 http://localhost:8001/join?id=1
 http://localhost:8001/join?id=2
+
+//Find match
+http://localhost:8001/match?id=1000
