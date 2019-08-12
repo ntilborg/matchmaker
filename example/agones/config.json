@@ -2,5 +2,5 @@
      "AllocatorPort": 8000,
      "AllocatorHost": "localhost",
      "MaxPlayers": 2,
-     "WaitTime": 5
+     "WaitTime": 60
 }
