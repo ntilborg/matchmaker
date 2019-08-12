@@ -54,6 +54,11 @@ func (s *ServerFinder) GetServer(poolID uint32) *v1alpha1.GameServerStatus {
 			return nil
 		}
 
+		if gs == nil {
+			fmt.Printf("Cannot find server")
+			return nil
+		}
+
 		fmt.Printf("Found %s\n", gs.Address)
 		fmt.Printf("Port %d\n", gs.Ports[0].Port)
 

@@ -134,12 +134,22 @@ func handleMatchStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if pool.IsFull {
-		s.GetServer(pool.PoolID)
-	}
+		gs := s.GetServer(pool.PoolID)
 
-	_, wrErr := io.WriteString(w, fmt.Sprintf("Full? %t", pool.IsFull))
-	if wrErr != nil {
-		fmt.Println("Error match status")
+		if gs == nil {
+			io.WriteString(w, fmt.Sprintf("Error finding server..."))
+			return
+		}
+
+		_, wrErr := io.WriteString(w, fmt.Sprintf("Match found at %s:%d", gs.Address, gs.Ports[0].Port))
+		if wrErr != nil {
+			fmt.Println("Error match status")
+		}
+	} else {
+		_, wrErr := io.WriteString(w, fmt.Sprintf("Finding match..."))
+		if wrErr != nil {
+			fmt.Println("Error match status")
+		}
 	}
 }
 

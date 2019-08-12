@@ -122,12 +122,20 @@ func (m *MatchMaker) Join(playerID uint32) *PoolResp {
 				// remove pool from expired map
 				delete(m.expiredPools, p.id)
 			}
+			m.mutex.Unlock()
 
 			fmt.Println("Cleanup finished")
-			m.mutex.Unlock()
 			break
 		}
 	}()
 
-	return p.add(playerID)
+	pr := p.add(playerID)
+
+	if pr.IsFull {
+		m.mutex.Lock()
+		m.expiredPools[p.id] = pr
+		m.mutex.Unlock()
+	}
+
+	return pr
 }
