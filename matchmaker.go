@@ -78,7 +78,7 @@ func (m *MatchMaker) GetPool(poolID uint32) *PoolResp {
 	defer m.mutex.Unlock()
 	if _, ok := m.expiredPools[poolID]; !ok {
 		//Does not exist
-		fmt.Println("Warning, pool", poolID, "does not exist!")
+		fmt.Println("Warning, pool", poolID, "is not found or yet full!")
 		return nil
 	}
 	return m.expiredPools[poolID]

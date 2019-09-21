@@ -124,24 +124,31 @@ func handleMatchStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool := m.GetPool(uint32(id))
+	//TODO Currently only the expired pools are found with this, not the open pools
+	poolResp := m.GetPool(uint32(id))
 
-	if pool == nil {
-		w.WriteHeader(http.StatusNotAcceptable)
+	if poolResp == nil {
+		_, wrErr := io.WriteString(w, fmt.Sprintf("false"))
+		if wrErr != nil {
+			fmt.Println("Match not found or empty")
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 
-	if pool.IsFull {
-		gs := s.GetServer(pool.PoolID)
+	if poolResp.IsFull {
+		gs := s.GetServer(poolResp.PoolID)
 
 		if gs == nil {
+			//TODO no server can be found, "deadlock"
+
+			fmt.Println("Cannot find server")
 			io.WriteString(w, fmt.Sprintf("Error finding server..."))
 			return
 		}
 
-		_, wrErr := io.WriteString(w, fmt.Sprintf("Match found at %s:%d", gs.Address, gs.Ports[0].Port))
+		_, wrErr := io.WriteString(w, fmt.Sprintf("true,%s:%d", gs.Address, gs.Ports[0].Port))
 		if wrErr != nil {
 			fmt.Println("Error match status")
 		}
