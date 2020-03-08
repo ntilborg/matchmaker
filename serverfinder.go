@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"sync"
 
-	"agones.dev/agones/pkg/apis/stable/v1alpha1" //Based on v0.11.0
+	agones "agones.dev/agones/pkg/apis/agones/v1"
 )
 
 // ServerFinder struct hold required data
@@ -16,7 +16,7 @@ type ServerFinder struct {
 	mutex      sync.Mutex
 	agonesPort int
 	agonesHost string
-	servers    map[uint32]*v1alpha1.GameServerStatus
+	servers    map[uint32]*agones.GameServerStatus
 }
 
 // AgonesOption struct define engine option configuration
@@ -32,7 +32,7 @@ func NewFinder(opt AgonesOption) *ServerFinder {
 	return &ServerFinder{
 		agonesPort: opt.Port,
 		agonesHost: opt.Host,
-		servers:    make(map[uint32]*v1alpha1.GameServerStatus),
+		servers:    make(map[uint32]*agones.GameServerStatus),
 	}
 }
 
@@ -42,11 +42,11 @@ type result struct {
 }
 
 // GetServer get game server struct
-func (s *ServerFinder) GetServer(poolID uint32) *v1alpha1.GameServerStatus {
+func (s *ServerFinder) GetServer(poolID uint32) *agones.GameServerStatus {
 	if _, ok := s.servers[poolID]; !ok {
 
 		///
-		gs := new(v1alpha1.GameServerStatus)
+		gs := new(agones.GameServerStatus)
 
 		jsonErr := s.getJSON(fmt.Sprintf("%s:%d/address", s.agonesHost, s.agonesPort), gs)
 		if jsonErr != nil {
