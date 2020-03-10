@@ -1,6 +1,7 @@
 {
+     "MatchmakingPort": 8001,
      "AllocatorPort": 8000,
-     "AllocatorHost": "localhost",
+     "AllocatorHost": "127.0.0.1",
      "MaxPlayers": 2,
      "WaitTime": 60
 }

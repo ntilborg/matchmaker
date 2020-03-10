@@ -12,14 +12,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ntilborg/matchmaker"
+
+	agones "agones.dev/agones/pkg/apis/agones/v1"
 )
 
 //Configuration from the config.json configuration file
 type Configuration struct {
-	Port       int    `json:"AllocatorPort"`
-	Host       string `json:"AllocatorHost"`
-	MaxPlayers int    `json:"MaxPlayers"`
-	WaitTime   int    `json:"WaitTime"`
+	ListeningPort int    `json:"MatchmakingPort"`
+	Port          int    `json:"AllocatorPort"`
+	Host          string `json:"AllocatorHost"`
+	MaxPlayers    int    `json:"MaxPlayers"`
+	WaitTime      int    `json:"WaitTime"`
 }
 
 const (
@@ -55,10 +58,10 @@ func main() {
 	http.HandleFunc("/match", handleMatchStatus)
 
 	// Run the HTTP server using the bound certificate and key for TLS
-	if err := http.ListenAndServe(":8001", nil); err != nil {
+	fmt.Println(fmt.Sprintf("Start listening on port: %d", conf.ListeningPort))
+
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", conf.ListeningPort), nil); err != nil {
 		fmt.Println("HTTPS server failed to run")
-	} else {
-		fmt.Println("HTTPS server is running on port 8001")
 	}
 }
 
@@ -77,14 +80,14 @@ func handleRegisterPlayer(w http.ResponseWriter, r *http.Request) {
 func handleJoinMatch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	fmt.Println("New player joining")
-
 	id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusNotAcceptable)
 		fmt.Println("Error joining match")
 		return
 	}
+
+	fmt.Println("New player joining:", id)
 
 	w.WriteHeader(http.StatusOK)
 
@@ -98,18 +101,26 @@ func handleJoinMatch(w http.ResponseWriter, r *http.Request) {
 
 	_, wrErr := io.WriteString(w, fmt.Sprintf("%d", pool.PoolID))
 	if wrErr != nil {
-
 		fmt.Println("Error joining match")
 		return
 	}
 
 	if pool.IsFull {
-		gs := s.GetServer(pool.PoolID)
+		ch := make(chan *agones.GameServerStatus)
+		go s.GetServer(pool.PoolID, ch)
+		gs := <-ch
+
+		var playerString string = "Players join server: "
+
+		for _, player := range pool.Players {
+			playerString += fmt.Sprintf("%d ", player)
+		}
+
+		fmt.Println(playerString)
 
 		if gs == nil {
 			println("Error finding server")
 		}
-
 	}
 }
 
@@ -138,11 +149,11 @@ func handleMatchStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if poolResp.IsFull {
-		gs := s.GetServer(poolResp.PoolID)
+		ch := make(chan *agones.GameServerStatus)
+		go s.GetServer(poolResp.PoolID, ch)
+		gs := <-ch
 
 		if gs == nil {
-			//TODO no server can be found, "deadlock"
-
 			fmt.Println("Cannot find server")
 			io.WriteString(w, fmt.Sprintf("Error finding server..."))
 			return

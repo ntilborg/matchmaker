@@ -39,11 +39,8 @@ func (m *MatchMaker) getAvailablePool(playerID uint32) *pool {
 	for _, v := range m.pools {
 		able, duplicate := v.ableToJoin(playerID)
 
-		if duplicate {
-			return nil
-		}
-
-		if able {
+		//Always return the pool the player joined
+		if duplicate || able {
 			return v
 		}
 	}

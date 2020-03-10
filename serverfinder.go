@@ -42,7 +42,7 @@ type result struct {
 }
 
 // GetServer get game server struct
-func (s *ServerFinder) GetServer(poolID uint32) *agones.GameServerStatus {
+func (s *ServerFinder) GetServer(poolID uint32, ch chan<- *agones.GameServerStatus) {
 	if _, ok := s.servers[poolID]; !ok {
 
 		///
@@ -51,22 +51,23 @@ func (s *ServerFinder) GetServer(poolID uint32) *agones.GameServerStatus {
 		jsonErr := s.getJSON(fmt.Sprintf("%s:%d/address", s.agonesHost, s.agonesPort), gs)
 		if jsonErr != nil {
 			fmt.Printf("Error with JSON %s\n", jsonErr)
-			return nil
+			ch <- nil
+			return
 		}
 
 		if gs == nil {
 			fmt.Printf("Cannot find server")
-			return nil
+			ch <- nil
+			return
 		}
 
 		fmt.Printf("Found %s\n", gs.Address)
 		fmt.Printf("Port %d\n", gs.Ports[0].Port)
 
 		s.servers[poolID] = gs
-		return gs
 	}
 
-	return s.servers[poolID]
+	ch <- s.servers[poolID]
 }
 
 func (s *ServerFinder) getJSON(url string, target interface{}) error {

@@ -51,10 +51,22 @@ func (p *pool) ableToJoin(playerID uint32) (bool, bool) {
 	return len(p.players) < p.maxPlayers, false
 }
 
-func (p *pool) add(player uint32) *PoolResp {
+func (p *pool) add(playerID uint32) *PoolResp {
 
 	p.m.Lock()
-	p.players = append(p.players, player)
+
+	//Check if duplicate
+	duplicate := false
+
+	for _, player := range p.players {
+		if player == playerID {
+			duplicate = true
+		}
+	}
+
+	if duplicate == false {
+		p.players = append(p.players, playerID)
+	}
 
 	if len(p.players) == p.maxPlayers {
 		p.respChan = PoolResp{
