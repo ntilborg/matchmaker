@@ -133,32 +133,36 @@ func handleMatchStatus(w http.ResponseWriter, r *http.Request) {
 
 func replyPool(w http.ResponseWriter, r *http.Request, pool *matchmaker.PoolResp) {
 	w.Header().Set("Content-Type", "application/json")
-
 	w.WriteHeader(http.StatusOK)
 
 	var matchresponse []byte
 	var err error
 
 	if pool.IsFull {
-		ch := make(chan *agones.GameServerStatus)
-		go s.GetServer(pool.PoolID, ch)
-		gs := <-ch
+		if pool.Gs == nil {
 
-		var playerString string = "Players join server: "
+			ch := make(chan *agones.GameServerStatus)
+			go s.GetServer(pool.PoolID, ch)
+			pool.Gs = <-ch
 
-		for _, player := range pool.Players {
-			playerString += fmt.Sprintf("%d ", player)
+			var playerString string = "Pool is full. Players joining: "
+
+			for _, player := range pool.Players {
+				playerString += fmt.Sprintf("%d ", player)
+			}
+
+			fmt.Println(playerString)
 		}
 
-		fmt.Println(playerString)
-
-		if gs == nil {
+		//Reply to the client server
+		if pool.Gs == nil {
 			println("Error finding server")
 			matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: true})
 		} else {
-			matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: true, Port: gs.Ports[0].Port, Host: gs.Address})
+			matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: true, Port: pool.Gs.Ports[0].Port, Host: pool.Gs.Address})
 		}
 	} else {
+		//Pool not full
 		matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: false})
 	}
 

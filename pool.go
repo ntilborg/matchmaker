@@ -3,6 +3,8 @@ package matchmaker
 import (
 	"fmt"
 	"sync"
+
+	agones "agones.dev/agones/pkg/apis/agones/v1"
 )
 
 type (
@@ -24,6 +26,7 @@ type (
 		IsFull   bool
 		TimeIsUp bool
 		Players  []uint32
+		Gs       *agones.GameServerStatus
 	}
 )
 
