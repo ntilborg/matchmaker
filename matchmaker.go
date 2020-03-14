@@ -74,8 +74,14 @@ func (m *MatchMaker) GetPool(poolID uint32) *PoolResp {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if _, ok := m.expiredPools[poolID]; !ok {
-		//Does not exist
-		fmt.Println("Warning, pool", poolID, "is not found or yet full!")
+		//Return the not active pool
+		for _, v := range m.pools {
+			if v.id == poolID {
+				return &v.respChan
+			}
+		}
+
+		fmt.Println("Warning, pool", poolID, "not found!")
 		return nil
 	}
 	return m.expiredPools[poolID]
@@ -98,30 +104,8 @@ func (m *MatchMaker) Join(playerID uint32) *PoolResp {
 		case <-timer.C:
 
 			fmt.Println("Time is up!")
+			//TODO remove from pool list and cleanup after timer finished
 
-			m.mutex.Lock()
-
-			if _, ok := m.expiredPools[p.id]; !ok {
-				fmt.Println("Not assigned!")
-
-				p.respChan = PoolResp{
-					PoolID:   p.id,
-					TimeIsUp: true,
-					Players:  p.players,
-				}
-
-				m.expiredPools[p.id] = &p.respChan
-			}
-
-			if p.currentPlayerCount == len(p.players) {
-				// remove items on pool
-				p.players = nil
-				// remove pool from expired map
-				delete(m.expiredPools, p.id)
-			}
-			m.mutex.Unlock()
-
-			fmt.Println("Cleanup finished")
 			break
 		}
 	}()

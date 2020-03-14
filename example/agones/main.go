@@ -25,6 +25,14 @@ type Configuration struct {
 	WaitTime      int    `json:"WaitTime"`
 }
 
+//MatchResponse structure
+type MatchResponse struct {
+	MatchID uint32 `json:"MatchmakingID"`
+	IsFull  bool   `json:"IsFull"`
+	Port    int32  `json:"ServerPort"`
+	Host    string `json:"ServerHost"`
+}
+
 const (
 	numberOfPlayerInRoom = 2
 )
@@ -51,10 +59,10 @@ func main() {
 	//Handler to register a new player. Returns unique player ID
 	http.HandleFunc("/register", handleRegisterPlayer)
 
-	//Handler to let a new player search and join a new match. Returns match ID.
+	//Handler to let a new player search and join a new match. Returns match MatchResponse
 	http.HandleFunc("/join", handleJoinMatch)
 
-	//Handler to poll if match has been found. Returns game configuration (IP and Port)
+	//Handler to poll if match has been found. Returns MatchResponse
 	http.HandleFunc("/match", handleMatchStatus)
 
 	// Run the HTTP server using the bound certificate and key for TLS
@@ -78,8 +86,6 @@ func handleRegisterPlayer(w http.ResponseWriter, r *http.Request) {
 
 // Join with certain match ID. join?id=XXX
 func handleJoinMatch(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusNotAcceptable)
@@ -89,8 +95,6 @@ func handleJoinMatch(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("New player joining:", id)
 
-	w.WriteHeader(http.StatusOK)
-
 	//Join the matchmaker with the unique client ID
 	pool := m.Join(uint32(id))
 
@@ -99,11 +103,41 @@ func handleJoinMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, wrErr := io.WriteString(w, fmt.Sprintf("%d", pool.PoolID))
-	if wrErr != nil {
-		fmt.Println("Error joining match")
+	replyPool(w, r, pool)
+}
+
+// Join with certain uid
+func handleMatchStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotAcceptable)
+		_, err = io.WriteString(w, "ERROR")
+		fmt.Println("Error getting match info")
 		return
 	}
+
+	poolResp := m.GetPool(uint32(id))
+
+	if poolResp == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotAcceptable)
+		_, err = io.WriteString(w, "ERROR")
+
+		fmt.Println("Match not found or empty")
+		return
+	}
+
+	replyPool(w, r, poolResp)
+}
+
+func replyPool(w http.ResponseWriter, r *http.Request, pool *matchmaker.PoolResp) {
+	w.Header().Set("Content-Type", "application/json")
+
+	w.WriteHeader(http.StatusOK)
+
+	var matchresponse []byte
+	var err error
 
 	if pool.IsFull {
 		ch := make(chan *agones.GameServerStatus)
@@ -120,54 +154,18 @@ func handleJoinMatch(w http.ResponseWriter, r *http.Request) {
 
 		if gs == nil {
 			println("Error finding server")
-		}
-	}
-}
-
-// Join with certain uid
-func handleMatchStatus(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
-	if err != nil {
-		w.WriteHeader(http.StatusNotAcceptable)
-		fmt.Println("Error getting match info")
-		return
-	}
-
-	//TODO Currently only the expired pools are found with this, not the open pools
-	poolResp := m.GetPool(uint32(id))
-
-	if poolResp == nil {
-		_, wrErr := io.WriteString(w, fmt.Sprintf("false"))
-		if wrErr != nil {
-			fmt.Println("Match not found or empty")
-		}
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-
-	if poolResp.IsFull {
-		ch := make(chan *agones.GameServerStatus)
-		go s.GetServer(poolResp.PoolID, ch)
-		gs := <-ch
-
-		if gs == nil {
-			fmt.Println("Cannot find server")
-			io.WriteString(w, fmt.Sprintf("Error finding server..."))
-			return
-		}
-
-		_, wrErr := io.WriteString(w, fmt.Sprintf("true,%s:%d", gs.Address, gs.Ports[0].Port))
-		if wrErr != nil {
-			fmt.Println("Error match status")
+			matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: true})
+		} else {
+			matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: true, Port: gs.Ports[0].Port, Host: gs.Address})
 		}
 	} else {
-		_, wrErr := io.WriteString(w, fmt.Sprintf("Finding match..."))
-		if wrErr != nil {
-			fmt.Println("Error match status")
-		}
+		matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: false})
+	}
+
+	_, err = io.WriteString(w, fmt.Sprintf(string(matchresponse)))
+	if err != nil {
+		fmt.Println("Error joining match")
+		return
 	}
 }
 
