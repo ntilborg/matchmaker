@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	agones "agones.dev/agones/pkg/apis/agones/v1"
+	allocation "agones.dev/agones/pkg/apis/allocation/v1"
 )
 
 type (
@@ -26,7 +26,7 @@ type (
 		IsFull   bool
 		TimeIsUp bool
 		Players  []uint32
-		Gs       *agones.GameServerStatus
+		Gs       *allocation.GameServerAllocation
 	}
 )
 
