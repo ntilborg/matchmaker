@@ -45,7 +45,7 @@ var (
 )
 
 func main() {
-	fmt.Println("Starting airplane matchmaker")
+	fmt.Println("Starting matchmaker")
 	conf = readConfig("config.json")
 
 	m = matchmaker.New(matchmaker.Option{
