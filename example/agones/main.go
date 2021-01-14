@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ntilborg/matchmaker"
 
-	agones "agones.dev/agones/pkg/apis/agones/v1"
+	allocation "agones.dev/agones/pkg/apis/allocation/v1"
 )
 
 //Configuration from the config.json configuration file
@@ -23,28 +23,30 @@ type Configuration struct {
 	Host          string `json:"AllocatorHost"`
 	MaxPlayers    int    `json:"MaxPlayers"`
 	WaitTime      int    `json:"WaitTime"`
+	FleetName     string `json:"FleetName"`
 }
 
 //MatchResponse structure
 type MatchResponse struct {
-	MatchID uint32 `json:"MatchmakingID"`
-	IsFull  bool   `json:"IsFull"`
-	Port    int32  `json:"ServerPort"`
-	Host    string `json:"ServerHost"`
+	MatchID        uint32 `json:"MatchmakingID"`
+	IsFull         bool   `json:"IsFull"`
+	CurrentPlayers uint32 `json:"CurrentPlayers"`
+	MaxPlayers     uint32 `json:"MaxPlayers"`
+	Port           int32  `json:"ServerPort"`
+	Host           string `json:"ServerHost"`
 }
 
-const (
-	numberOfPlayerInRoom = 2
-)
-
 var (
-	m *matchmaker.MatchMaker
-	s *matchmaker.ServerFinder
+	m    *matchmaker.MatchMaker
+	s    *matchmaker.ServerFinder
+	conf Configuration
+
+	alloc *allocation.GameServerAllocation
 )
 
 func main() {
-	fmt.Println("Starting matchmaker example")
-	conf := readConfig("config.json")
+	fmt.Println("Starting airplane matchmaker")
+	conf = readConfig("config.json")
 
 	m = matchmaker.New(matchmaker.Option{
 		MaxPlayers: conf.MaxPlayers,
@@ -52,8 +54,9 @@ func main() {
 	})
 
 	s = matchmaker.NewFinder(matchmaker.AgonesOption{
-		Port: conf.Port,
-		Host: conf.Host,
+		Port:      conf.Port,
+		Host:      conf.Host,
+		FleetName: conf.FleetName,
 	})
 
 	//Handler to register a new player. Returns unique player ID
@@ -141,7 +144,7 @@ func replyPool(w http.ResponseWriter, r *http.Request, pool *matchmaker.PoolResp
 	if pool.IsFull {
 		if pool.Gs == nil {
 
-			ch := make(chan *agones.GameServerStatus)
+			ch := make(chan *allocation.GameServerAllocation)
 			go s.GetServer(pool.PoolID, ch)
 			pool.Gs = <-ch
 
@@ -157,13 +160,13 @@ func replyPool(w http.ResponseWriter, r *http.Request, pool *matchmaker.PoolResp
 		//Reply to the client server
 		if pool.Gs == nil {
 			println("Error finding server")
-			matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: true})
+			matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: pool.IsFull, CurrentPlayers: uint32(len(pool.Players)), MaxPlayers: uint32(conf.MaxPlayers)})
 		} else {
-			matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: true, Port: pool.Gs.Ports[0].Port, Host: pool.Gs.Address})
+			matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: pool.IsFull, CurrentPlayers: uint32(len(pool.Players)), MaxPlayers: uint32(conf.MaxPlayers), Port: pool.Gs.Status.Ports[0].Port, Host: pool.Gs.Status.Address})
 		}
 	} else {
 		//Pool not full
-		matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: false})
+		matchresponse, err = json.Marshal(MatchResponse{MatchID: pool.PoolID, IsFull: pool.IsFull, CurrentPlayers: uint32(len(pool.Players)), MaxPlayers: uint32(conf.MaxPlayers)})
 	}
 
 	_, err = io.WriteString(w, fmt.Sprintf(string(matchresponse)))

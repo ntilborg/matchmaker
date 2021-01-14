@@ -3,5 +3,6 @@
      "AllocatorPort": 8000,
      "AllocatorHost": "127.0.0.1",
      "MaxPlayers": 2,
-     "WaitTime": 60
+     "WaitTime": 60,
+     "FleetName": "serverfleet"
 }
